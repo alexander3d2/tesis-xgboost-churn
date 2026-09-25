@@ -17,6 +17,7 @@ ENV/
 # Variables de entorno y credenciales
 .env
 .env.*
+!.env.example
 *.pem
 *.key
 

@@ -1,0 +1,36 @@
+# Docker NO respeta .gitignore: este archivo es obligatorio aparte para no
+# hornear credenciales ni archivos innecesarios dentro de la imagen.
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+.git/
+.gitignore
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+.venv/
+venv/
+env/
+ENV/
+
+tests/
+notebooks/
+
+data/
+*.csv
+*.parquet
+models/
+*.joblib
+*.pkl
+*.xgb
+
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

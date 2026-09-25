@@ -4,7 +4,7 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.config import get_settings
+from app.config import get_results_db_settings
 
 config = context.config
 
@@ -13,7 +13,11 @@ if config.config_file_name is not None:
 
 
 def _build_db_url() -> str:
-    settings = get_settings()
+    # Deliberadamente solo la BD DE RESULTADOS (propia del microservicio).
+    # Alembic nunca debe correr migraciones contra la BD de origen
+    # (dev_inclub / producción): esa base es propiedad de InClub World y
+    # esta tesis solo la lee, nunca modifica su esquema.
+    settings = get_results_db_settings()
     return (
         f"postgresql+psycopg://{settings.user}:{settings.password}"
         f"@{settings.host}:{settings.port}/{settings.name}"

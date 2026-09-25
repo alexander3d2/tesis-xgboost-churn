@@ -1,6 +1,3 @@
-from datetime import datetime
-
-
 class RiskScoreRepository:
     """Acceso de solo lectura a la tabla de resultados del modelo (score_riesgo).
 
@@ -41,5 +38,8 @@ class RiskScoreRepository:
             "risk_score": risk_score,
             "risk_level": risk_level,
             "model_version": model_version,
-            "scored_at": scored_at.isoformat() if isinstance(scored_at, datetime) else scored_at,
+            # hasattr en vez de isinstance(datetime) a propósito: cubre tanto
+            # datetime como date por si la columna real termina siendo solo
+            # fecha, sin hora.
+            "scored_at": scored_at.isoformat() if hasattr(scored_at, "isoformat") else scored_at,
         }
