@@ -37,3 +37,17 @@ def test_runner_is_deterministic_with_the_same_seed_and_input():
             first_result.probabilities,
             second_result.probabilities,
         )
+
+
+def test_runner_predicts_probabilities_for_separate_test_input():
+    x_train, y_train = _synthetic_training_data()
+    x_test = np.ones((7, x_train.shape[1]))
+
+    results = ModelComparisonRunner(random_state=7).run(
+        x_train,
+        y_train,
+        x_test=x_test,
+    )
+
+    for result in results:
+        assert result.probabilities.shape == (len(x_test),)

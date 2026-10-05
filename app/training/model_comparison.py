@@ -24,11 +24,17 @@ class ModelComparisonRunner:
     def __init__(self, random_state: int = RANDOM_SEED) -> None:
         self.random_state = random_state
 
-    def run(self, x: Any, y: Any) -> tuple[ModelComparisonResult, ...]:
+    def run(
+        self,
+        x: Any,
+        y: Any,
+        x_test: Any | None = None,
+    ) -> tuple[ModelComparisonResult, ...]:
+        prediction_input = x if x_test is None else x_test
         results = []
         for model_name, model in self._models():
             model.fit(x, y)
-            probabilities = model.predict_proba(x)[:, 1]
+            probabilities = model.predict_proba(prediction_input)[:, 1]
             results.append(
                 ModelComparisonResult(
                     model_name=model_name,
@@ -51,5 +57,6 @@ def compare_models(
     x: Any,
     y: Any,
     random_state: int = RANDOM_SEED,
+    x_test: Any | None = None,
 ) -> tuple[ModelComparisonResult, ...]:
-    return ModelComparisonRunner(random_state=random_state).run(x, y)
+    return ModelComparisonRunner(random_state=random_state).run(x, y, x_test=x_test)
