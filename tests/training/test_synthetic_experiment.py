@@ -38,10 +38,11 @@ def test_temporal_split_isolates_dates_and_rejects_empty_partitions():
 def test_synthetic_experiment_executes_all_candidates_on_test_shape():
     result = run_synthetic_experiment(seed=5, n_samples=30)
 
-    assert tuple(item.model_name for item in result.comparisons) == (
-        "xgboost",
-        "random_forest",
-        "decision_tree",
+    assert len(result.comparisons) == 9
+    assert tuple(item.model_name for item in result.comparisons[::3]) == (
+        "xgboost", "random_forest", "decision_tree"
     )
+    assert len(result.evaluations) == 9
+    assert len(result.split.validation.labels) > 0
     for item in result.comparisons:
         assert item.probabilities.shape == (len(result.split.test.labels),)

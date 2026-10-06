@@ -1,10 +1,23 @@
 import numpy as np
 
 from app.training.model_comparison import (
+    CONFIGURATION_CANDIDATES,
     MODEL_NAMES,
     ModelComparisonRunner,
     compare_models,
 )
+
+
+def test_each_model_has_exactly_three_explicit_synthetic_scaffold_configs():
+    assert tuple(len(CONFIGURATION_CANDIDATES[name]) for name in MODEL_NAMES) == (3, 3, 3)
+    assert all(all(configuration for configuration in configs) for configs in CONFIGURATION_CANDIDATES.values())
+
+
+def test_runner_can_execute_all_nine_scaffold_candidates():
+    x, y = _synthetic_training_data()
+    results = ModelComparisonRunner(random_state=7).run_configurations(x, y)
+    assert len(results) == 9
+    assert all(result.configuration_name in {"scaffold-1", "scaffold-2", "scaffold-3"} for result in results)
 
 
 def _synthetic_training_data() -> tuple[np.ndarray, np.ndarray]:

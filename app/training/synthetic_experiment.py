@@ -10,7 +10,8 @@ from datetime import date
 import numpy as np
 
 from app.training.feature_vector import FEATURE_COLUMNS
-from app.training.model_comparison import ModelComparisonResult, compare_models
+from app.training.evaluation import EvaluationMetrics, evaluate_predictions
+from app.training.model_comparison import ModelComparisonResult, ModelComparisonRunner
 
 
 @dataclass(frozen=True)
@@ -26,8 +27,18 @@ class SyntheticDataset:
 @dataclass(frozen=True)
 class TemporalSplit:
     train: SyntheticDataset
+    validation: SyntheticDataset
     test: SyntheticDataset
     cutoff: np.datetime64
+    validation_cutoff: np.datetime64
+
+
+@dataclass(frozen=True)
+class SyntheticEvaluationRecord:
+    model_name: str
+    configuration_name: str
+    validation: EvaluationMetrics
+    test: EvaluationMetrics
 
 
 @dataclass(frozen=True)
@@ -35,6 +46,7 @@ class SyntheticExperimentResult:
     dataset: SyntheticDataset
     split: TemporalSplit
     comparisons: tuple[ModelComparisonResult, ...]
+    evaluations: tuple[SyntheticEvaluationRecord, ...]
 
 
 def generate_synthetic_dataset(
@@ -58,7 +70,10 @@ def generate_synthetic_dataset(
             rng.integers(0, 101, size=n_samples),
         )
     ).astype(float)
-    labels = rng.permutation(np.arange(n_samples) % 2).astype(np.int8)
+    labels = np.zeros(n_samples, dtype=np.int8)
+    positive_count = max(1, n_samples // 4)
+    labels[:positive_count] = 1
+    labels = rng.permutation(labels)
     subject_ids = np.array(
         [f"SYN-{index:06d}" for index in range(n_samples)],
         dtype="U10",
@@ -77,12 +92,24 @@ def generate_synthetic_dataset(
 def temporal_split(
     dataset: SyntheticDataset,
     cutoff: np.datetime64 | str,
+    validation_cutoff: np.datetime64 | str | None = None,
 ) -> TemporalSplit:
-    """Split strictly before and on/after an explicit date cutoff."""
+    """Preserve the legacy two-way split API, with optional validation partition."""
     normalized_cutoff = np.datetime64(cutoff, "D")
+    normalized_validation_cutoff = (
+        np.datetime64(validation_cutoff, "D")
+        if validation_cutoff is not None
+        else normalized_cutoff
+    )
     train_mask = dataset.reference_dates < normalized_cutoff
-    test_mask = dataset.reference_dates >= normalized_cutoff
-    if not train_mask.any() or not test_mask.any():
+    validation_mask = (
+        (dataset.reference_dates >= normalized_cutoff)
+        & (dataset.reference_dates < normalized_validation_cutoff)
+    )
+    test_mask = dataset.reference_dates >= normalized_validation_cutoff
+    if not train_mask.any() or not test_mask.any() or (
+        validation_cutoff is not None and not validation_mask.any()
+    ):
         raise ValueError("temporal cutoff must produce non-empty train and test partitions")
 
     def select(mask: np.ndarray) -> SyntheticDataset:
@@ -97,8 +124,24 @@ def temporal_split(
 
     return TemporalSplit(
         train=select(train_mask),
+        validation=select(validation_mask) if validation_cutoff is not None else select(test_mask),
         test=select(test_mask),
         cutoff=normalized_cutoff,
+        validation_cutoff=normalized_validation_cutoff,
+    )
+
+
+def temporal_split_60_20_20(dataset: SyntheticDataset) -> TemporalSplit:
+    """Partition by ordered unique reference dates, failing closed when empty."""
+    dates = np.unique(dataset.reference_dates)
+    train_count = int(len(dates) * 0.60)
+    validation_count = int(len(dates) * 0.20)
+    if train_count < 1 or validation_count < 1 or len(dates) - train_count - validation_count < 1:
+        raise ValueError("60/20/20 temporal partition would contain an empty partition")
+    return temporal_split(
+        dataset,
+        cutoff=dates[train_count],
+        validation_cutoff=dates[train_count + validation_count],
     )
 
 
@@ -106,18 +149,30 @@ def run_synthetic_experiment(
     seed: int,
     n_samples: int = 60,
 ) -> SyntheticExperimentResult:
-    """Generate, split, and execute candidates without evaluating them."""
+    """Run all synthetic scaffold candidates without ranking or selecting a winner."""
     dataset = generate_synthetic_dataset(seed=seed, n_samples=n_samples)
-    cutoff = dataset.reference_dates[n_samples // 2]
-    split = temporal_split(dataset, cutoff=cutoff)
-    comparisons = compare_models(
+    split = temporal_split_60_20_20(dataset)
+    comparisons = ModelComparisonRunner(random_state=seed).run_configurations(
         split.train.features,
         split.train.labels,
-        random_state=seed,
-        x_test=split.test.features,
+        x_test=split.validation.features,
+    )
+    evaluations = tuple(
+        SyntheticEvaluationRecord(
+            model_name=item.model_name,
+            configuration_name=item.configuration_name,
+            validation=evaluate_predictions(split.validation.labels, item.probabilities),
+            test=evaluate_predictions(
+                split.test.labels,
+                item.model.predict_proba(split.test.features)[:, 1],
+                threshold=evaluate_predictions(split.validation.labels, item.probabilities).threshold,
+            ),
+        )
+        for item in comparisons
     )
     return SyntheticExperimentResult(
         dataset=dataset,
         split=split,
         comparisons=comparisons,
+        evaluations=evaluations,
     )
