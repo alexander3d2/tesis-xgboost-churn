@@ -10,10 +10,12 @@ from app.core.wallet_activity_features import (
     WalletActivityRawData,
     build_wallet_activity_features,
 )
-from app.repositories.affiliate_data_repository import AffiliateDataRepository
-from app.repositories.referral_repository import ReferralRepository
-from app.repositories.subscription_expiration_repository import SubscriptionExpirationRepository
-from app.repositories.wallet_activity_repository import WalletActivityRepository
+from app.training.ports import (
+    AffiliateDataPort,
+    ReferralPort,
+    SubscriptionExpirationPort,
+    WalletActivityPort,
+)
 
 
 @dataclass(frozen=True)
@@ -26,10 +28,10 @@ class TrainingExampleFeatures:
 class TrainingExampleBuilder:
     def __init__(
         self,
-        affiliate_data_repository: AffiliateDataRepository,
-        wallet_activity_repository: WalletActivityRepository,
-        referral_repository: ReferralRepository,
-        subscription_expiration_repository: SubscriptionExpirationRepository,
+        affiliate_data_repository: AffiliateDataPort,
+        wallet_activity_repository: WalletActivityPort,
+        referral_repository: ReferralPort,
+        subscription_expiration_repository: SubscriptionExpirationPort,
     ) -> None:
         self._affiliate_data_repository = affiliate_data_repository
         self._wallet_activity_repository = wallet_activity_repository
