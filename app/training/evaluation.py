@@ -1,5 +1,3 @@
-"""Pure, synthetic-safe evaluation helpers for binary classifiers."""
-
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -30,7 +28,6 @@ class EvaluationMetrics:
 
 
 def select_primary_metric(y_true: Sequence[int]) -> str:
-    """Return the declared metric rule without inspecting model performance."""
     labels = np.asarray(y_true)
     positives = int(np.sum(labels == 1))
     negatives = int(np.sum(labels == 0))
@@ -40,7 +37,6 @@ def select_primary_metric(y_true: Sequence[int]) -> str:
 
 
 def select_threshold(y_true: Sequence[int], probabilities: Sequence[float]) -> float:
-    """Select a threshold on validation data, maximizing F1 then recall."""
     labels = np.asarray(y_true, dtype=np.int8)
     scores = np.asarray(probabilities, dtype=float)
     if labels.shape != scores.shape or labels.ndim != 1:

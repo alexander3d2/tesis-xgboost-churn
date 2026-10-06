@@ -17,11 +17,6 @@ class RiskScoreRepository:
         return self._row_to_dict(row)
 
     def get_latest_scores(self, limit: int, offset: int, order: str) -> tuple[list[dict], int]:
-        """Return one latest score per affiliate, ordered and paginated.
-
-        ``order`` is selected from a fixed allowlist because SQL parameters cannot
-        represent an identifier or direction. Pagination values remain parameters.
-        """
         directions = {"asc": "ASC", "desc": "DESC"}
         try:
             direction = directions[order]

@@ -1,9 +1,3 @@
-"""Synthetic-only scaffolding for validating the experimental plumbing.
-
-This module intentionally does not estimate scientific metrics or make model
-selection decisions. Its values are fixtures for testing integration only.
-"""
-
 from dataclasses import dataclass
 from datetime import date
 
@@ -53,7 +47,6 @@ def generate_synthetic_dataset(
     seed: int,
     n_samples: int = 60,
 ) -> SyntheticDataset:
-    """Generate reproducible fixture rows using only the explicit seed."""
     if n_samples < 2:
         raise ValueError("n_samples must be at least 2")
 
@@ -94,7 +87,6 @@ def temporal_split(
     cutoff: np.datetime64 | str,
     validation_cutoff: np.datetime64 | str | None = None,
 ) -> TemporalSplit:
-    """Preserve the legacy two-way split API, with optional validation partition."""
     normalized_cutoff = np.datetime64(cutoff, "D")
     normalized_validation_cutoff = (
         np.datetime64(validation_cutoff, "D")
@@ -132,7 +124,6 @@ def temporal_split(
 
 
 def temporal_split_60_20_20(dataset: SyntheticDataset) -> TemporalSplit:
-    """Partition by ordered unique reference dates, failing closed when empty."""
     dates = np.unique(dataset.reference_dates)
     train_count = int(len(dates) * 0.60)
     validation_count = int(len(dates) * 0.20)
@@ -149,7 +140,6 @@ def run_synthetic_experiment(
     seed: int,
     n_samples: int = 60,
 ) -> SyntheticExperimentResult:
-    """Run all synthetic scaffold candidates without ranking or selecting a winner."""
     dataset = generate_synthetic_dataset(seed=seed, n_samples=n_samples)
     split = temporal_split_60_20_20(dataset)
     comparisons = ModelComparisonRunner(random_state=seed).run_configurations(

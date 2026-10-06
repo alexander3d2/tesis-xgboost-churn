@@ -1,5 +1,3 @@
-"""Optional explainability adapter; SHAP is deliberately not a dependency."""
-
 from dataclasses import dataclass
 from typing import Any, Sequence
 
@@ -22,14 +20,13 @@ def explain_model(
     features: Any,
     feature_names: Sequence[str] | None = None,
 ) -> ExplainabilityAvailable | ExplainabilityUnavailable:
-    """Build SHAP values lazily, without implying causal explanations."""
     try:
-        import shap  # type: ignore[import-not-found]
+        import shap
     except ImportError:
         return ExplainabilityUnavailable()
     try:
         values = shap.TreeExplainer(model)(features).values
-    except Exception as exc:  # adapters must not break the training pipeline
+    except Exception as exc:
         return ExplainabilityUnavailable(reason=f"SHAP unavailable for this model: {exc}")
     return ExplainabilityAvailable(
         available=True,

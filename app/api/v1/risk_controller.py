@@ -17,7 +17,6 @@ def list_risk_scores(
     order: Literal["asc", "desc"] = "desc",
     repository: RiskScoreRepository = Depends(get_risk_repository),
 ) -> RiskScoreListResponse:
-    """List the latest provisional score for each affiliate."""
     items, total = repository.get_latest_scores(limit=limit, offset=offset, order=order)
     return RiskScoreListResponse(items=items, limit=limit, offset=offset, total=total)
 
