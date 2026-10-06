@@ -16,6 +16,42 @@ class RiskScoreRepository:
             return None
         return self._row_to_dict(row)
 
+    def get_latest_scores(self, limit: int, offset: int, order: str) -> tuple[list[dict], int]:
+        """Return one latest score per affiliate, ordered and paginated.
+
+        ``order`` is selected from a fixed allowlist because SQL parameters cannot
+        represent an identifier or direction. Pagination values remain parameters.
+        """
+        directions = {"asc": "ASC", "desc": "DESC"}
+        try:
+            direction = directions[order]
+        except KeyError as exc:
+            raise ValueError("order must be 'asc' or 'desc'") from exc
+
+        with self._connection.cursor() as cursor:
+            cursor.execute(
+                f"""
+                WITH latest_scores AS (
+                    SELECT DISTINCT ON (affiliate_id)
+                        affiliate_id, risk_score, risk_level, model_version, scored_at
+                    FROM score_riesgo
+                    ORDER BY affiliate_id, scored_at DESC
+                )
+                SELECT affiliate_id, risk_score, risk_level, model_version, scored_at,
+                       COUNT(*) OVER () AS total
+                FROM latest_scores
+                ORDER BY risk_score {direction}, scored_at DESC
+                LIMIT %s OFFSET %s
+                """,
+                (limit, offset),
+            )
+            rows = cursor.fetchall()
+
+        if not rows:
+            return [], 0
+        total = rows[0][5]
+        return [self._row_to_dict(row[:5]) for row in rows], total
+
     def _fetch_latest_score_row(self, affiliate_id: int) -> tuple | None:
         with self._connection.cursor() as cursor:
             cursor.execute(

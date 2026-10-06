@@ -9,3 +9,10 @@ class RiskScoreResponse(BaseModel):
     risk_level: str = Field(..., description="Alto, Medio o Bajo")
     model_version: str
     scored_at: str
+
+
+class RiskScoreListResponse(BaseModel):
+    items: list[RiskScoreResponse]
+    limit: int
+    offset: int
+    total: int
