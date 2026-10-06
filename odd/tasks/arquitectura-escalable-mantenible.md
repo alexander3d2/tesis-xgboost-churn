@@ -19,7 +19,7 @@ Reducir acoplamiento y mejorar mantenibilidad sin cambiar el contrato provisiona
 - [x] A1 — Desacoplar `TrainingExampleBuilder` mediante puertos y conservar compatibilidad CSV.
 - [x] A2 — Introducir `RiskScoreService` y enrutar el listado provisional mediante dependencia explícita.
 - [x] A3 — Documentar estructura, fronteras de datos y verificación local.
-- [ ] A4 — Ejecutar pruebas, revisar diff y cerrar cada unidad con commit convencional.
+- [x] A4 — Ejecutar pruebas, revisar diff y cerrar cada unidad con commit convencional. Evidencia: 71 pruebas aprobadas, `pip check` correcto, `git diff --check` correcto. Commits: `ec2f3ac`, `d71c2a9`, `5caf90f`.
 
 ## Verificación
 - Pruebas focalizadas de training y API.
