@@ -1,15 +1,3 @@
-"""Cálculo de variables (features) individuales a partir de datos crudos del afiliado.
-
-Aislado a propósito de la API y de la base de datos: recibe datos ya
-consultados (AffiliateRawData) y devuelve variables listas para el modelo,
-sin saber de dónde vinieron ni a dónde va el resultado (regla de la Semana
-4: el núcleo científico no se mezcla con la infraestructura).
-
-Las variables de red de referidos NO están aquí todavía: falta decidir
-cuál es la fuente real del árbol (ver notas en Obsidian) antes de
-calcularlas.
-"""
-
 from dataclasses import dataclass
 from datetime import date
 
@@ -18,12 +6,10 @@ from app.exceptions import PagosInsuficientesError, SinPagosRegistradosError
 
 @dataclass(frozen=True)
 class AffiliateRawData:
-    """Datos crudos de un afiliado, ya consultados por el repositorio correspondiente."""
-
     payment_dates: list[date]
     payment_amounts: list[float]
     account_created_at: date
-    reference_date: date  # fecha de corte del cálculo (normalmente "hoy")
+    reference_date: date
 
 
 @dataclass(frozen=True)
@@ -35,7 +21,6 @@ class AffiliateFeatures:
 
 
 def build_features(raw_data: AffiliateRawData) -> AffiliateFeatures:
-    """Ensambla las variables individuales a partir de datos crudos ya consultados."""
     return AffiliateFeatures(
         dias_desde_ultimo_pago=_dias_desde_ultimo_pago(raw_data),
         frecuencia_pago_dias=_frecuencia_pago_dias(raw_data),
@@ -52,7 +37,6 @@ def _dias_desde_ultimo_pago(raw_data: AffiliateRawData) -> int:
 
 
 def _frecuencia_pago_dias(raw_data: AffiliateRawData) -> float:
-    """Promedio de días entre pagos consecutivos (a menor valor, mayor frecuencia de pago)."""
     fechas_ordenadas = sorted(raw_data.payment_dates)
     if len(fechas_ordenadas) < 2:
         raise PagosInsuficientesError(len(fechas_ordenadas))

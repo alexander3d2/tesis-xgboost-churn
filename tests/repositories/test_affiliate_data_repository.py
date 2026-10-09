@@ -8,9 +8,6 @@ from app.repositories.affiliate_data_repository import AffiliateDataRepository
 
 
 def _mock_connection(payments: list[tuple], created_at_row: tuple | None):
-    """Simula una conexión psycopg: cada `with connection.cursor()` sucesivo
-    devuelve un cursor distinto, en el mismo orden en que el repositorio los
-    abre (primero pagos, luego fecha de creación de cuenta)."""
     payments_cursor = MagicMock()
     payments_cursor.fetchall.return_value = payments
 

@@ -15,7 +15,6 @@ def test_train_and_predict_returns_probability_between_0_and_1():
 
 
 def test_train_is_reproducible_with_the_same_seed():
-    """La Semana 5 exige semilla fija para reproducibilidad; esto lo comprueba de verdad."""
     rng = np.random.default_rng(seed=7)
     x_train = rng.random((30, 3))
     y_train = rng.integers(0, 2, size=30)

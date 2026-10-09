@@ -1,15 +1,3 @@
-"""
-Exploración de esquema real de la base de datos de desarrollo de InClub World.
-
-Este script SOLO lee metadatos (nombres de esquema, tabla, columna y conteo
-de filas). No selecciona ni imprime filas individuales, para no exponer datos
-personales reales de afiliados en la salida de este script ni en el
-historial de este repositorio.
-
-Requiere un archivo ".env" local (no versionado, ver ".env.example") con las
-credenciales reales de conexión.
-"""
-
 import os
 
 import psycopg
@@ -26,11 +14,6 @@ DB_CONFIG = {
     "sslmode": os.environ.get("DB_SSLMODE", "disable"),
 }
 
-# Esquemas relevantes para las variables del modelo (Cap. III de la tesis):
-# bo_account   -> datos y estado del afiliado (antigüedad, estado de cuenta)
-# bo_membership-> suscripciones y pagos de membresía
-# bo_commissions-> comisiones y red de referidos (sponsor/slave, nivel)
-# bo_wallet    -> movimientos de billetera/pagos
 ESQUEMAS_DE_INTERES = ["bo_account", "bo_membership", "bo_commissions", "bo_wallet"]
 
 
