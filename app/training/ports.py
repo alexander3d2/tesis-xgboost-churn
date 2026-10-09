@@ -6,7 +6,7 @@ from app.repositories.referral_repository import ReferralCounts
 
 
 class AffiliateDataPort(Protocol):
-    def get_raw_data(self, affiliate_id: int, reference_date: date) -> AffiliateRawData:
+    def get_raw_data(self, affiliate_id: int | str, reference_date: date) -> AffiliateRawData:
         ...
 
 
@@ -22,6 +22,6 @@ class ReferralPort(Protocol):
 
 class SubscriptionExpirationPort(Protocol):
     def get_days_since_expiration_by_subscription(
-        self, affiliate_id: int, reference_date: date
+        self, affiliate_id: int | str, reference_date: date
     ) -> list[int | None]:
         ...

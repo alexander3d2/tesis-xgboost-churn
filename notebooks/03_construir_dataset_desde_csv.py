@@ -11,77 +11,60 @@ from app.core.horizon import HORIZONTE_PREDICCION_DIAS
 from app.exceptions import AffiliateNotFoundError, PagosInsuficientesError, SinPagosRegistradosError
 from app.training.csv_adapters import (
     CsvAffiliateDataRepository,
-    CsvReferralRepository,
     CsvSubscriptionExpirationRepository,
-    CsvWalletActivityRepository,
 )
 from app.training.dataset_builder import TrainingExampleBuilder
 from app.training.feature_vector import FEATURE_COLUMNS, to_feature_vector
 from app.training.monthly_cutoffs import generar_fechas_de_corte_mensuales
 
-DATASHEET_DIR = "Datasheet"
+DEFAULT_DATASHEET_DIR = "Datasheet_anonimizado"
 ULTIMA_FECHA_CORTE_VALIDA = date.today() - timedelta(days=HORIZONTE_PREDICCION_DIAS)
 
 
-def cargar_payments() -> pd.DataFrame:
+def cargar_payments(datasheet_dir: str) -> pd.DataFrame:
     payments = pd.read_csv(
-        f"{DATASHEET_DIR}/payments.csv",
+        f"{datasheet_dir}/payments.csv",
         header=None,
         names=["idsuscription", "paydate", "quoteusd", "nextexpirationdate", "positiononschedule"],
+        dtype={"idsuscription": str},
     )
     payments["paydate"] = pd.to_datetime(payments["paydate"], errors="coerce")
     payments["nextexpirationdate"] = pd.to_datetime(payments["nextexpirationdate"], errors="coerce")
     return payments
 
 
-def cargar_suscripciones() -> pd.DataFrame:
-    return pd.read_csv(f"{DATASHEET_DIR}/suscripciones.csv", header=None, names=["idsuscription", "iduser"])
+def cargar_suscripciones(datasheet_dir: str) -> pd.DataFrame:
+    return pd.read_csv(
+        f"{datasheet_dir}/suscripciones.csv",
+        header=None,
+        names=["idsuscription", "iduser"],
+        dtype={"idsuscription": str, "iduser": str},
+    )
 
 
-def cargar_usuarios() -> pd.DataFrame:
-    usuarios = pd.read_csv(f"{DATASHEET_DIR}/usuarios.csv", header=None, names=["iduser", "createdate"])
+def cargar_usuarios(datasheet_dir: str) -> pd.DataFrame:
+    usuarios = pd.read_csv(
+        f"{datasheet_dir}/usuarios.csv",
+        header=None,
+        names=["iduser", "createdate"],
+        dtype={"iduser": str},
+    )
     usuarios["createdate"] = pd.to_datetime(usuarios["createdate"], errors="coerce")
     return usuarios
 
 
-def cargar_wallets() -> pd.DataFrame:
-    return pd.read_csv(f"{DATASHEET_DIR}/wallets.csv", header=None, names=["idwallet", "iduser"])
-
-
-def cargar_wallet_transacciones() -> pd.DataFrame:
-    wallet_transacciones = pd.read_csv(
-        f"{DATASHEET_DIR}/wallet_transacciones.csv", header=None, names=["idwallet", "initialdate"]
-    )
-    wallet_transacciones["initialdate"] = pd.to_datetime(wallet_transacciones["initialdate"], errors="coerce")
-    return wallet_transacciones
-
-
-def cargar_affiliate() -> pd.DataFrame:
-    return pd.read_csv(f"{DATASHEET_DIR}/affiliate.csv", header=None, names=["idsponsor", "idson"])
-
-
-def cargar_usercustomer() -> pd.DataFrame:
-    return pd.read_csv(f"{DATASHEET_DIR}/usercustomer.csv", header=None, names=["iduser", "idstate"])
-
-
-def construir_builder() -> TrainingExampleBuilder:
-    payments = cargar_payments()
-    suscripciones = cargar_suscripciones()
-    usuarios = cargar_usuarios()
-    wallets = cargar_wallets()
-    wallet_transacciones = cargar_wallet_transacciones()
-    affiliate = cargar_affiliate()
-    usercustomer = cargar_usercustomer()
+def construir_builder(datasheet_dir: str) -> tuple[TrainingExampleBuilder, pd.DataFrame]:
+    payments = cargar_payments(datasheet_dir)
+    suscripciones = cargar_suscripciones(datasheet_dir)
+    usuarios = cargar_usuarios(datasheet_dir)
 
     return TrainingExampleBuilder(
         affiliate_data_repository=CsvAffiliateDataRepository(payments, suscripciones, usuarios),
-        wallet_activity_repository=CsvWalletActivityRepository(wallets, wallet_transacciones),
-        referral_repository=CsvReferralRepository(affiliate, usercustomer),
         subscription_expiration_repository=CsvSubscriptionExpirationRepository(payments, suscripciones),
     ), usuarios
 
 
-def construir_fila(builder: TrainingExampleBuilder, affiliate_id: int, fecha_corte: date) -> dict | None:
+def construir_fila(builder: TrainingExampleBuilder, affiliate_id: str, fecha_corte: date) -> dict | None:
     try:
         features = builder.build_features(affiliate_id, fecha_corte)
     except (SinPagosRegistradosError, PagosInsuficientesError, AffiliateNotFoundError):
@@ -114,7 +97,7 @@ def construir_dataset(builder: TrainingExampleBuilder, usuarios: pd.DataFrame) -
     inicio = time.time()
     total_usuarios = len(usuarios)
     for indice, (_, usuario) in enumerate(usuarios.iterrows(), start=1):
-        affiliate_id = int(usuario["iduser"])
+        affiliate_id = usuario["iduser"]
         fecha_creacion = usuario["createdate"].date()
         for fecha_corte in generar_fechas_de_corte_mensuales(fecha_creacion, ULTIMA_FECHA_CORTE_VALIDA):
             fila = construir_fila(builder, affiliate_id, fecha_corte)
@@ -125,8 +108,10 @@ def construir_dataset(builder: TrainingExampleBuilder, usuarios: pd.DataFrame) -
     return pd.DataFrame(filas)
 
 
-def main():
-    builder, usuarios = construir_builder()
+def main(argv: list[str] | None = None):
+    args = sys.argv[1:] if argv is None else argv
+    datasheet_dir = args[0] if args else DEFAULT_DATASHEET_DIR
+    builder, usuarios = construir_builder(datasheet_dir)
     dataset = construir_dataset(builder, usuarios)
     dataset.to_csv("dataset_entrenamiento.csv", index=False)
     print(f"Dataset generado: {len(dataset)} filas")

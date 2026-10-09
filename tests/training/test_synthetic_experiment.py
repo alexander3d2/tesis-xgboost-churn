@@ -17,6 +17,7 @@ def test_generation_is_reproducible_and_uses_current_feature_order():
     np.testing.assert_array_equal(first.subject_ids, second.subject_ids)
     np.testing.assert_array_equal(first.reference_dates, second.reference_dates)
     assert first.feature_columns == tuple(FEATURE_COLUMNS)
+    assert first.features.shape == (24, 4)
     assert first.source == "synthetic"
 
 
@@ -36,7 +37,7 @@ def test_temporal_split_isolates_dates_and_rejects_empty_partitions():
 
 
 def test_synthetic_experiment_executes_all_candidates_on_test_shape():
-    result = run_synthetic_experiment(seed=5, n_samples=30)
+    result = run_synthetic_experiment(seed=6, n_samples=30)
 
     assert len(result.comparisons) == 9
     assert tuple(item.model_name for item in result.comparisons[::3]) == (

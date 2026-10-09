@@ -1,9 +1,10 @@
+import dataclasses
+import inspect
 from datetime import date, timedelta
 from unittest.mock import MagicMock
 
 from app.core.features import AffiliateRawData
 from app.core.horizon import HORIZONTE_PREDICCION_DIAS
-from app.repositories.referral_repository import ReferralCounts
 from app.training.csv_adapters import (
     CsvAffiliateDataRepository,
     CsvReferralRepository,
@@ -16,23 +17,15 @@ from app.training.csv_subscription_expiration_repository import (
     CsvSubscriptionExpirationRepository as DirectCsvSubscriptionExpirationRepository,
 )
 from app.training.csv_wallet_activity_repository import CsvWalletActivityRepository as DirectCsvWalletActivityRepository
-from app.training.dataset_builder import TrainingExampleBuilder
+from app.training.dataset_builder import TrainingExampleBuilder, TrainingExampleFeatures
 
 
 def _builder(
     affiliate_raw_data: AffiliateRawData,
-    last_transaction_date: date | None,
-    referral_counts: ReferralCounts,
     days_since_expiration_by_subscription: list[int | None],
 ) -> TrainingExampleBuilder:
     affiliate_data_repository = MagicMock()
     affiliate_data_repository.get_raw_data.return_value = affiliate_raw_data
-
-    wallet_activity_repository = MagicMock()
-    wallet_activity_repository.get_last_transaction_date.return_value = last_transaction_date
-
-    referral_repository = MagicMock()
-    referral_repository.count_direct_referrals_by_status.return_value = referral_counts
 
     subscription_expiration_repository = MagicMock()
     subscription_expiration_repository.get_days_since_expiration_by_subscription.return_value = (
@@ -41,33 +34,46 @@ def _builder(
 
     return TrainingExampleBuilder(
         affiliate_data_repository=affiliate_data_repository,
-        wallet_activity_repository=wallet_activity_repository,
-        referral_repository=referral_repository,
         subscription_expiration_repository=subscription_expiration_repository,
     )
 
 
-def test_build_features_combines_all_feature_sources():
+def test_build_features_returns_only_payment_based_affiliate_features():
     affiliate_raw_data = AffiliateRawData(
         payment_dates=[date(2026, 7, 1), date(2026, 8, 1)],
         payment_amounts=[100.0, 100.0],
         account_created_at=date(2025, 1, 1),
         reference_date=date(2026, 9, 1),
     )
-    builder = _builder(
-        affiliate_raw_data=affiliate_raw_data,
-        last_transaction_date=date(2026, 8, 20),
-        referral_counts=ReferralCounts(activos=2, inactivos=1),
-        days_since_expiration_by_subscription=[],
-    )
+    builder = _builder(affiliate_raw_data=affiliate_raw_data, days_since_expiration_by_subscription=[])
 
     features = builder.build_features(affiliate_id=1, reference_date=date(2026, 9, 1))
 
     assert features.affiliate.dias_desde_ultimo_pago == 31
-    assert features.wallet_activity.dias_desde_ultima_transaccion_billetera == 12
-    assert features.referral.referidos_directos_activos == 2
-    assert features.referral.referidos_directos_inactivos == 1
-    assert features.referral.referidos_directos_totales == 3
+    assert features.affiliate.frecuencia_pago_dias == 31
+    assert features.affiliate.monto_pago_promedio == 100.0
+    assert features.affiliate.antiguedad_dias == 608
+    assert [field.name for field in dataclasses.fields(TrainingExampleFeatures)] == ["affiliate"]
+
+
+def test_builder_constructor_does_not_require_wallet_or_referral_repositories():
+    parameters = set(inspect.signature(TrainingExampleBuilder.__init__).parameters) - {"self"}
+
+    assert parameters == {"affiliate_data_repository", "subscription_expiration_repository"}
+
+
+def test_build_features_accepts_string_affiliate_id():
+    affiliate_raw_data = AffiliateRawData(
+        payment_dates=[date(2026, 7, 1), date(2026, 8, 1)],
+        payment_amounts=[100.0, 100.0],
+        account_created_at=date(2025, 1, 1),
+        reference_date=date(2026, 9, 1),
+    )
+    builder = _builder(affiliate_raw_data=affiliate_raw_data, days_since_expiration_by_subscription=[])
+
+    builder.build_features(affiliate_id="U1A2B3C4D5E6F", reference_date=date(2026, 9, 1))
+
+    builder._affiliate_data_repository.get_raw_data.assert_called_once_with("U1A2B3C4D5E6F", date(2026, 9, 1))
 
 
 def test_csv_adapters_facade_reexports_existing_classes():
@@ -85,8 +91,6 @@ def test_build_label_true_when_a_subscription_is_churned_at_horizon():
             account_created_at=date(2025, 1, 1),
             reference_date=date(2026, 9, 1),
         ),
-        last_transaction_date=None,
-        referral_counts=ReferralCounts(activos=0, inactivos=0),
         days_since_expiration_by_subscription=[200],
     )
 
@@ -103,8 +107,6 @@ def test_build_label_false_when_no_subscription_is_churned_at_horizon():
             account_created_at=date(2025, 1, 1),
             reference_date=date(2026, 9, 1),
         ),
-        last_transaction_date=None,
-        referral_counts=ReferralCounts(activos=0, inactivos=0),
         days_since_expiration_by_subscription=[30],
     )
 
@@ -115,14 +117,10 @@ def test_build_label_false_when_no_subscription_is_churned_at_horizon():
 
 def test_build_label_uses_the_configured_30_day_horizon():
     affiliate_data_repository = MagicMock()
-    wallet_activity_repository = MagicMock()
-    referral_repository = MagicMock()
     subscription_expiration_repository = MagicMock()
     subscription_expiration_repository.get_days_since_expiration_by_subscription.return_value = [0]
     builder = TrainingExampleBuilder(
         affiliate_data_repository=affiliate_data_repository,
-        wallet_activity_repository=wallet_activity_repository,
-        referral_repository=referral_repository,
         subscription_expiration_repository=subscription_expiration_repository,
     )
 

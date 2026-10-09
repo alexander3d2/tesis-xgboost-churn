@@ -57,10 +57,6 @@ def generate_synthetic_dataset(
             rng.integers(1, 31, size=n_samples),
             rng.uniform(0.0, 1000.0, size=n_samples),
             rng.integers(0, 3651, size=n_samples),
-            rng.integers(0, 181, size=n_samples),
-            rng.integers(0, 51, size=n_samples),
-            rng.integers(0, 51, size=n_samples),
-            rng.integers(0, 101, size=n_samples),
         )
     ).astype(float)
     labels = np.zeros(n_samples, dtype=np.int8)
