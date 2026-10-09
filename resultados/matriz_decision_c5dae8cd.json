@@ -1,0 +1,45 @@
+{
+  "weights": [
+    0.6,
+    0.25,
+    0.15
+  ],
+  "sum_w": 1.0,
+  "raw": {
+    "perf": {
+      "xgboost": 0.8023160513730108,
+      "random_forest": 0.7876540010497163,
+      "decision_tree": 0.6394874085474723
+    },
+    "ms_per_1000": {
+      "xgboost": 2.3042499817640487,
+      "random_forest": 10.752760344448342,
+      "decision_tree": 0.06984465079966339
+    },
+    "leaves": {
+      "xgboost": 1593,
+      "random_forest": 42949,
+      "decision_tree": 115
+    }
+  },
+  "scores": {
+    "xgboost": {
+      "perf": 5.0,
+      "time": 4.163372474316985,
+      "leaves": 4.861978801886352,
+      "S": 4.770139938862199
+    },
+    "random_forest": {
+      "perf": 4.639816433549617,
+      "time": 1.0,
+      "leaves": 1.0,
+      "S": 3.1838898601297703
+    },
+    "decision_tree": {
+      "perf": 1.0,
+      "time": 5.0,
+      "leaves": 5.0,
+      "S": 2.6
+    }
+  }
+}
