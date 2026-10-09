@@ -42,17 +42,29 @@ def select_threshold(y_true: Sequence[int], probabilities: Sequence[float]) -> f
     if labels.shape != scores.shape or labels.ndim != 1:
         raise ValueError("y_true and probabilities must be one-dimensional and aligned")
     candidates = np.unique(np.concatenate((np.array([0.0, 1.0]), scores)))
-    ranked = []
-    for threshold in candidates:
-        predicted = (scores >= threshold).astype(np.int8)
-        ranked.append(
-            (
-                f1_score(labels, predicted, zero_division=0),
-                recall_score(labels, predicted, zero_division=0),
-                float(threshold),
-            )
-        )
-    return max(ranked, key=lambda item: (item[0], item[1], item[2]))[2]
+    order = np.argsort(scores, kind="stable")
+    sorted_scores = scores[order]
+    cumulative_positives = np.concatenate(([0], np.cumsum(labels[order])))
+    total_positives = int(cumulative_positives[-1])
+    below = np.searchsorted(sorted_scores, candidates, side="left")
+    true_positives = total_positives - cumulative_positives[below]
+    predicted_positives = scores.size - below
+    false_positives = predicted_positives - true_positives
+    false_negatives = total_positives - true_positives
+    f1_denominator = 2 * true_positives + false_positives + false_negatives
+    f1_values = np.divide(
+        2.0 * true_positives,
+        f1_denominator,
+        out=np.zeros(candidates.shape, dtype=float),
+        where=f1_denominator > 0,
+    )
+    recall_values = (
+        true_positives / total_positives
+        if total_positives > 0
+        else np.zeros(candidates.shape, dtype=float)
+    )
+    best = np.lexsort((candidates, recall_values, f1_values))[-1]
+    return float(candidates[best])
 
 
 def evaluate_predictions(
