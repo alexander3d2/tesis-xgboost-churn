@@ -1,0 +1,38 @@
+﻿name: ${SMOKE_COMPOSE_PROJECT:-tesis_xgboost_churn_smoke_local}
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: churn_results_smoke
+      POSTGRES_USER: smoke_user
+      POSTGRES_PASSWORD: ${SMOKE_DB_PASSWORD:?Defina SMOKE_DB_PASSWORD con un valor aleatorio local}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U smoke_user -d churn_results_smoke"]
+      interval: 2s
+      timeout: 3s
+      retries: 15
+    volumes:
+      - smoke-postgres-data:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      SMOKE_TEST: "1"
+      RESULTS_DB_HOST: db
+      RESULTS_DB_PORT: "5432"
+      RESULTS_DB_NAME: churn_results_smoke
+      RESULTS_DB_USER: smoke_user
+      RESULTS_DB_PASSWORD: ${SMOKE_DB_PASSWORD:?Defina SMOKE_DB_PASSWORD con un valor aleatorio local}
+      RESULTS_DB_SSLMODE: disable
+      SMOKE_API_URL: http://api:8000
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:18080:8000"
+
+volumes:
+  smoke-postgres-data:
