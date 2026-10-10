@@ -43,3 +43,7 @@ models/
 # Sistema operativo
 .DS_Store
 Thumbs.db
+
+# Cachés de herramientas
+.pytest_cache/
+.codegraph/
